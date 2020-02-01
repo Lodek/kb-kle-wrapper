@@ -8,21 +8,25 @@ and downloads it.
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
-import json, copy, time, sys
+import argparse, json, copy, time, sys
 
 
 class LayoutFormatter:
-
+    """
+    Receive KLE Json and provides method to imput a list of keys in the KLE Json
+    """
     def __init__(self, base_layout):
-        with open(base_layout) as f:
-            self.base = json.load(f)
+        self.base = base_layout
 
     def format_layout(self, keys):
+        """Imput list of keys into the stored layout, return string matching 
+        the format accepted by KLE"""
         imputed = self.imput_keys(keys)
-        joined = ',\n'.join(str(line) for line in imputed)
-        return joined.replace("'", '"')
+        joined = ',\n'.join(json.dumps(line) for line in imputed)
+        return joined
 
     def imput_keys(self, keys):
+        """Imput keys into the stored layout, return new dict matching imputed layout"""
         layout = copy.deepcopy(self.base)
         keys = [key for key in keys]
         for r, row in enumerate(layout):
@@ -40,7 +44,10 @@ class LayoutFormatter:
 
 
 class KLEPage:
-
+    """
+    Abstraction for Keyboard layout editor page, exposes method
+    to set the a keyboard layout and to save it as a PNG.
+    """
     url =  'http://www.keyboard-layout-editor.com/'
 
     def __enter__(self):
@@ -85,21 +92,34 @@ class KLEPage:
         element.click()
 
     
-
-def main():
-
-    fmt = LayoutFormatter('planck.json')
-    keys_file = sys.argv[1]
-    with open(keys_file) as f:
-        keys = f.read_lines())
+def get_image(layout, keys):
+    """Command page abstraction and format keys.
+    Expect layout to be a json to be imputed and keys
+    to be a list of objects with __str__."""
+    fmt = LayoutFormatter(layout)
     txt = fmt.format_layout(keys)
-
-    with KLEPagew() as kle:
+    with KLEPage() as kle:
         kle.click_rawdata_menu()
         kle.fill_layout(txt)
         time.sleep(2)
         kle.save_png()
         time.sleep(2)
+   
+
+def main():
+    """Entry point for application through the CLI.
+    Implement interface and setup logic and call get_image()."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('layout',
+                        help='JSON file exported from KLE matching the layout to be imputed')
+    parser.add_argument('keys',
+                        help='txt with list of keys to be imputed, one key per line')
+    args = parser.parse_args()
+    with open(args.layout) as f:
+        layout = json.load(f)
+    with open(args.keys) as f:
+        keys = f.readlines()
+    get_image(layout, keys)
 
 if __name__ == '__main__':
     main()
