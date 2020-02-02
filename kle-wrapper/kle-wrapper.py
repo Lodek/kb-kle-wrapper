@@ -8,6 +8,8 @@ and downloads it.
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
+from pathlib import Path
+from shutil import move
 import argparse, json, copy, time, sys
 
 
@@ -110,16 +112,31 @@ def main():
     """Entry point for application through the CLI.
     Implement interface and setup logic and call get_image()."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('layout',
-                        help='JSON file exported from KLE matching the layout to be imputed')
-    parser.add_argument('keys',
-                        help='txt with list of keys to be imputed, one key per line')
+    parser.add_argument('-l', '--layout',
+                        help='JSON file exported from KLE matching the layout to be imputed',
+                        required=True)
+    parser.add_argument('-k', '--keys',
+                        help='txt with list of keys to be imputed, one key per line',
+                        required=True)
+    parser.add_argument('-o', '--output', help='output name for layout png', required=True)
+    parser.add_argument('-d', '--downloads', default='~/Downloads',
+                        help='Location of Chrome\' Download directory')
     args = parser.parse_args()
     with open(args.layout) as f:
         layout = json.load(f)
     with open(args.keys) as f:
         keys = f.readlines()
     get_image(layout, keys)
+    downloads = Path(args.downloads).expanduser().absolute()
+    move_image(downloads, args.output)
+
+
+def move_image(downloads, target):
+    """Iterate over downloads directory, sort png files by most recent, move it to target"""
+    pngs = downloads.glob('*.png')
+    key = lambda p : p.stat().st_ctime #sort over creating date
+    layout = sorted(pngs, key=key)[-1]
+    move(layout, target)
 
 if __name__ == '__main__':
     main()
